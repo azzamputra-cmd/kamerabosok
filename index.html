@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000">
+<title>Photon Camera</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Roboto,Arial,sans-serif}body{display:flex;justify-content:center;overflow:hidden}.app{width:100%;max-width:560px;height:100dvh;display:flex;flex-direction:column;background:#000;position:relative}.top{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;flex-shrink:0}.brand{font-size:16px;font-weight:800;letter-spacing:2px}.iconbtn{border:0;background:#171717;color:white;border-radius:50%;width:40px;height:40px;font-size:19px;display:grid;place-items:center}.preview{flex:1;min-height:0;position:relative;background:#080808;display:grid;place-items:center;overflow:hidden}video{width:100%;height:100%;object-fit:cover;display:none}#placeholder{text-align:center;color:#aaa;padding:25px}#placeholder b{display:block;color:white;margin-bottom:8px}.grid{position:absolute;inset:0;display:none;pointer-events:none;background:linear-gradient(90deg,transparent 33.1%,#ffffff48 33.3%,transparent 33.6%,transparent 66.4%,#ffffff48 66.7%,transparent 67%),linear-gradient(0deg,transparent 33.1%,#ffffff48 33.3%,transparent 33.6%,transparent 66.4%,#ffffff48 66.7%,transparent 67%)}.toast{position:absolute;bottom:14px;left:12px;right:12px;text-align:center;font-size:12px;text-shadow:0 1px 4px #000;background:#0006;border-radius:12px;padding:7px;color:#eee}.controls{flex-shrink:0;background:#050505;padding:10px 15px calc(15px + env(safe-area-inset-bottom))}.quick{display:flex;justify-content:space-around;align-items:center;margin-bottom:13px}.quick button{background:none;border:0;color:#fff;font-size:12px;min-width:55px;padding:7px 4px}.quick button span{display:block;font-size:22px;margin-bottom:4px}.modes{display:flex;justify-content:center;gap:22px;align-items:center;margin-bottom:15px;color:#aaa;font-size:12px}.modes .selected{color:#ffe082;font-weight:800}.shutterrow{display:flex;align-items:center;justify-content:space-around}.thumb{width:47px;height:47px;border-radius:10px;background:#1b1b1b;border:2px solid #555;overflow:hidden;display:grid;place-items:center;color:#ccc;font-size:20px}.thumb img{width:100%;height:100%;object-fit:cover;display:none}.shutter{width:76px;height:76px;border-radius:50%;border:5px solid white;background:#fff;box-shadow:inset 0 0 0 3px #555;position:relative}.shutter:active{transform:scale(.94)}.shutter:disabled{opacity:.4}.switch{width:48px;height:48px;border:0;border-radius:50%;background:#222;color:#fff;font-size:23px}.hint{font-size:10px;color:#777;text-align:center;margin-top:11px}.recording{position:absolute;top:13px;left:14px;background:#e53935;padding:5px 9px;border-radius:5px;font-size:11px;display:none}.flash{position:absolute;inset:0;background:white;opacity:0;pointer-events:none}.flash.go{animation:flash .2s}@keyframes flash{0%{opacity:.85}100%{opacity:0}}@media(min-height:800px){.controls{padding-bottom:24px}}
+</style>
+</head>
+<body><div class="app">
+<header class="top"><button class="iconbtn" id="gridBtn" aria-label="Grid">▦</button><div class="brand">PHOTON</div><button class="iconbtn" id="settingsBtn" aria-label="Pengaturan">⚙</button></header>
+<div class="preview"><div id="placeholder"><div style="font-size:48px;margin-bottom:12px">◎</div><b>Kamera siap dibuka</b>Tekan tombol kamera, lalu izinkan akses kamera.</div><video id="camera" autoplay playsinline muted></video><div class="grid" id="grid"></div><div class="recording" id="recBadge">● MEREKAM</div><div class="toast" id="toast">Akses kamera perlu izin dari browser</div><div class="flash" id="flash"></div></div>
+<div class="controls">
+<div class="quick"><button id="flashBtn"><span>⚡</span>Flash</button><button id="timerBtn"><span>◷</span>Timer <small id="timerText">Off</small></button><button id="ratioBtn"><span>▭</span>Rasio <small id="ratioText">4:3</small></button><button id="gridQuick"><span>▦</span>Grid</button><button id="openBtn"><span>⌑</span>Galeri</button></div>
+<div class="modes"><span class="selected" id="photoMode">FOTO</span><span id="videoMode">VIDEO</span><span id="portraitMode">POTRET</span></div>
+<div class="shutterrow"><button class="thumb" id="lastThumb" aria-label="Foto terakhir">▧<img id="thumbImg"></button><button class="shutter" id="shutter" aria-label="Ambil foto" disabled></button><button class="switch" id="switchBtn" aria-label="Balik kamera" disabled>⟳</button></div>
+<div class="hint" id="hint">FOTO • ketuk tombol untuk mengambil gambar</div>
+</div>
+<input type="file" id="gallery" accept="image/*" hidden>
+</div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),v=$('camera');let stream=null,facing='environment',timer=0,ratio='4:3',grid=false,flash=false,mode='photo',rec=null,chunks=[],lastUrl=null,lastBlob=null;
+function say(t){$('toast').textContent=t}
+async function openCamera(){
+ try{
+ if(!navigator.mediaDevices?.getUserMedia)throw Error('Browser tidak mendukung kamera. Buka halaman lewat HTTPS atau localhost.');
+ if(stream)stream.getTracks().forEach(t=>t.stop());
+ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:4096},height:{ideal:3072}}});
+ v.srcObject=stream;v.style.display='block';$('placeholder').style.display='none';await v.play();$('shutter').disabled=false;$('switchBtn').disabled=false;say('Kamera aktif • '+v.videoWidth+' × '+v.videoHeight);
+ }catch(e){say('Tidak bisa membuka kamera: '+e.message+' • Periksa izin kamera browser.');}
+}
+function stop(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;v.srcObject=null;v.style.display='none';$('placeholder').style.display='block';$('shutter').disabled=true;$('switchBtn').disabled=true}
+function capture(){
+ if(!stream)return;
+ const delay=timer;let n=delay;
+ if(n){say('Foto dalam '+n+' detik…');const tick=()=>{n--;if(n>0){say('Foto dalam '+n+' detik…');setTimeout(tick,1000)}else take()};setTimeout(tick,1000)}else take();
+}
+function take(){
+ if(mode==='video'){toggleVideo();return}
+ const c=document.createElement('canvas'),w=v.videoWidth,h=v.videoHeight;
+ let cw=w,ch=h;if(ratio==='1:1'){cw=Math.min(w,h);ch=cw}else if(ratio==='16:9'){if(w/h>16/9)cw=h*16/9;else ch=w*9/16}
+ c.width=Math.round(cw);c.height=Math.round(ch);c.getContext('2d').drawImage(v,Math.round((w-cw)/2),Math.round((h-ch)/2),cw,ch,0,0,c.width,c.height);
+ c.toBlob(blob=>{if(!blob){say('Gagal mengambil foto.');return}lastBlob=blob;if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=URL.createObjectURL(blob);$('thumbImg').src=lastUrl;$('thumbImg').style.display='block';$('lastThumb').firstChild.textContent='';const a=document.createElement('a');a.href=lastUrl;a.download='photon-'+Date.now()+'.jpg';a.click();say('Foto berhasil diambil dan diunduh.');$('flash').classList.remove('go');void $('flash').offsetWidth;$('flash').classList.add('go')},'image/jpeg',.96);
+}
+function toggleVideo(){
+ if(!stream)return;
+ if(rec&&rec.state==='recording'){rec.stop();return}
+ if(!window.MediaRecorder){say('Perekaman video tidak didukung browser.');return}
+ try{chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=()=>{const b=new Blob(chunks,{type:rec.mimeType||'video/webm'}),url=URL.createObjectURL(b),a=document.createElement('a');a.href=url;a.download='photon-video.webm';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);$('recBadge').style.display='none';$('shutter').style.background='#fff';say('Video selesai dan diunduh.')};rec.start();$('recBadge').style.display='block';$('shutter').style.background='#e53935';say('Merekam video… ketuk tombol lagi untuk berhenti.')}catch(e){say('Tidak dapat merekam: '+e.message)}
+}
+$('shutter').onclick=()=>{if(mode==='video')toggleVideo();else capture()};
+$('switchBtn').onclick=()=>{facing=facing==='environment'?'user':'environment';openCamera()};
+$('gridBtn').onclick=$('gridQuick').onclick=()=>{grid=!grid;$('grid').style.display=grid?'block':'none';say(grid?'Grid aktif':'Grid nonaktif')};
+$('flashBtn').onclick=async()=>{flash=!flash;try{await stream?.getVideoTracks()[0].applyConstraints({advanced:[{torch:flash}]});say(flash?'Flash aktif':'Flash nonaktif')}catch{flash=false;say('Flash tidak didukung kamera/browser ini.') }};
+$('timerBtn').onclick=()=>{timer=timer===0?3:timer===3?5:0;$('timerText').textContent=timer?timer+'s':'Off';say('Timer '+(timer?timer+' detik':'mati'))};
+$('ratioBtn').onclick=()=>{ratio=ratio==='4:3'?'1:1':ratio==='1:1'?'16:9':'4:3';$('ratioText').textContent=ratio;say('Rasio foto '+ratio)};
+$('openBtn').onclick=()=>$('gallery').click();$('gallery').onchange=e=>{const f=e.target.files[0];if(!f)return;const u=URL.createObjectURL(f);$('thumbImg').src=u;$('thumbImg').style.display='block';$('lastThumb').firstChild.textContent='';const a=document.createElement('a');a.href=u;a.download=f.name;a.click();say('Foto galeri dibuka / diunduh.')};
+$('lastThumb').onclick=()=>{if(lastUrl)window.open(lastUrl,'_blank');else $('gallery').click()};
+$('settingsBtn').onclick=()=>say('Tips: gunakan cahaya cukup, bersihkan lensa, dan tahan HP stabil.');
+function setMode(m){mode=m;[['photoMode','photo'],['videoMode','video'],['portraitMode','portrait']].forEach(([id,val])=>$(id).classList.toggle('selected',m===val));$('hint').textContent=m==='video'?'VIDEO • ketuk untuk mulai/berhenti merekam':m==='portrait'?'POTRET • efek blur bergantung perangkat':'FOTO • ketuk tombol untuk mengambil gambar';$('shutter').style.borderRadius=m==='video'?'18px':'50%';say('Mode '+m.toUpperCase())}
+$('photoMode').onclick=()=>setMode('photo');$('videoMode').onclick=()=>setMode('video');$('portraitMode').onclick=()=>setMode('portrait');
+$('placeholder').onclick=openCamera;
+openCamera(); // Memunculkan permintaan izin kamera saat halaman dibuka; browser tetap meminta persetujuan pengguna.
+window.addEventListener('pagehide',stop);
+})();
+</script></body></html>
